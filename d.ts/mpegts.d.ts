@@ -176,6 +176,12 @@ declare namespace Mpegts {
         fixAudioTimestampGap?: boolean;
 
         /**
+         * @desc Index of the audio track to play, default is 0, means auto select with the first audio track.
+         * @defaultvalue 0
+         */
+        audioTrackIndex?: number;
+
+        /**
          * @desc Accurate seek to any frame, not limited to video IDR frame, but may a bit slower.
          *          Available on Chrome > 50, FireFox and Safari.
          * @defaultvalue false
