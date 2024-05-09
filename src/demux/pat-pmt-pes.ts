@@ -23,6 +23,9 @@ export enum StreamType {
     kH265 = 0x24
 }
 
+export const AudioTypes = [StreamType.kMPEG1Audio, StreamType.kMPEG2Audio, StreamType.kADTSAAC, StreamType.kLOASAAC, StreamType.kAC3, StreamType.kEAC3];
+export const VideoTypes = [StreamType.kH264, StreamType.kH265];
+
 interface PIDToStreamTypeMap {
     [pid: number]: StreamType;
 }

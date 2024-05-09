@@ -19,9 +19,9 @@
 import Log from '../utils/logger';
 import DemuxErrors from './demux-errors';
 import MediaInfo from '../core/media-info';
-import {IllegalStateException} from '../utils/exception';
+import { IllegalStateException } from '../utils/exception';
 import BaseDemuxer from './base-demuxer';
-import { PAT, PESData, SectionData, SliceQueue, PIDToSliceQueues, PMT, ProgramToPMTMap, StreamType } from './pat-pmt-pes';
+import { PAT, PESData, SectionData, SliceQueue, PIDToSliceQueues, PMT, ProgramToPMTMap, StreamType, AudioTypes } from './pat-pmt-pes';
 import { AVCDecoderConfigurationRecord, H264AnnexBParser, H264NaluAVC1, H264NaluPayload, H264NaluType } from './h264';
 import SPSParser from './sps-parser';
 import { AACADTSParser, AACFrame, AACLOASParser, AudioSpecificConfig, LOASAACFrame } from './aac';
@@ -740,6 +740,8 @@ class TSDemuxer extends BaseDemuxer {
         let current_next_indicator = data[5] & 0x01;
         let section_number = data[6];
         let last_section_number = data[7];
+        let seen_audio_tracks = 0;
+        let wanted_audio_track_idx = this.config_.audioTrackIndex ?? 0;
 
         let pmt: PMT = null;
 
@@ -761,30 +763,34 @@ class TSDemuxer extends BaseDemuxer {
         let info_start_index = 12 + program_info_length;
         let info_bytes = section_length - 9 - program_info_length - 4;
 
-        for (let i = info_start_index; i < info_start_index + info_bytes; ) {
+        for (let i = info_start_index; i < info_start_index + info_bytes;) {
             let stream_type = data[i] as StreamType;
             let elementary_PID = ((data[i + 1] & 0x1F) << 8) | data[i + 2];
             let ES_info_length = ((data[i + 3] & 0x0F) << 8) | data[i + 4];
 
             pmt.pid_stream_type[elementary_PID] = stream_type;
 
-            let already_has_video =  pmt.common_pids.h264 || pmt.common_pids.h265;
+            let already_has_video = pmt.common_pids.h264 || pmt.common_pids.h265;
             let already_has_audio = pmt.common_pids.adts_aac || pmt.common_pids.loas_aac || pmt.common_pids.ac3 || pmt.common_pids.eac3 || pmt.common_pids.opus || pmt.common_pids.mp3;
 
             if (stream_type === StreamType.kH264 && !already_has_video) {
                 pmt.common_pids.h264 = elementary_PID;
             } else if (stream_type === StreamType.kH265 && !already_has_video) {
                 pmt.common_pids.h265 = elementary_PID;
-            } else if (stream_type === StreamType.kADTSAAC && !already_has_audio) {
-                pmt.common_pids.adts_aac = elementary_PID;
-            } else if (stream_type === StreamType.kLOASAAC && !already_has_audio) {
-                pmt.common_pids.loas_aac = elementary_PID;
-            } else if (stream_type === StreamType.kAC3 && !already_has_audio) {
-                pmt.common_pids.ac3 = elementary_PID; // ATSC AC-3
-            } else if (stream_type === StreamType.kEAC3 && !already_has_audio) {
-                pmt.common_pids.eac3 = elementary_PID; // ATSC EAC-3
-            } else if ((stream_type === StreamType.kMPEG1Audio || stream_type === StreamType.kMPEG2Audio) && !already_has_audio) {
-                pmt.common_pids.mp3 = elementary_PID;
+            } else if (AudioTypes.includes(stream_type)) { //isAudio
+                if (stream_type === StreamType.kADTSAAC && !already_has_audio && seen_audio_tracks === wanted_audio_track_idx) {
+                    pmt.common_pids.adts_aac = elementary_PID;
+                } else if (stream_type === StreamType.kLOASAAC && !already_has_audio && seen_audio_tracks === wanted_audio_track_idx) {
+                    pmt.common_pids.loas_aac = elementary_PID;
+                } else if (stream_type === StreamType.kAC3 && !already_has_audio && seen_audio_tracks === wanted_audio_track_idx) {
+                    pmt.common_pids.ac3 = elementary_PID; // ATSC AC-3
+                } else if (stream_type === StreamType.kEAC3 && !already_has_audio && seen_audio_tracks === wanted_audio_track_idx) {
+                    pmt.common_pids.eac3 = elementary_PID; // ATSC EAC-3
+                } else if ((stream_type === StreamType.kMPEG1Audio || stream_type === StreamType.kMPEG2Audio) && !already_has_audio && seen_audio_tracks === wanted_audio_track_idx) {
+                    pmt.common_pids.mp3 = elementary_PID;
+                } else {
+                    seen_audio_tracks++;
+                }
             } else if (stream_type === StreamType.kPESPrivateData) {
                 pmt.pes_private_data_pids[elementary_PID] = true;
                 if (ES_info_length > 0) {
