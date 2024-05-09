@@ -19,6 +19,8 @@ export declare enum StreamType {
     kH264 = 27,
     kH265 = 36
 }
+export declare const AudioTypes: StreamType[];
+export declare const VideoTypes: StreamType[];
 interface PIDToStreamTypeMap {
     [pid: number]: StreamType;
 }

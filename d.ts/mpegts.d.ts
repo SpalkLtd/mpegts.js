@@ -314,7 +314,7 @@ declare namespace Mpegts {
     }
 
     interface PlayerConstructor<T extends Player> {
-        new (mediaDataSource: MediaDataSource, config?: Config): T;
+        new(mediaDataSource: MediaDataSource, config?: Config): T;
     }
 
     interface Player {
