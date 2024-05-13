@@ -271,6 +271,7 @@ class MSEController {
     }
 
     appendMediaSegment(mediaSegment) {
+        if (!this._mediaSource || this._mediaSource.readyState !== 'open') { return; }
         let ms = mediaSegment;
         this._pendingSegments[ms.type].push(ms);
 
@@ -364,6 +365,7 @@ class MSEController {
     }
 
     _needCleanupSourceBuffer() {
+        if (!this._mediaSource || this._mediaSource.readyState !== 'open') { return; }
         if (!this._config.autoCleanupSourceBuffer) {
             return false;
         }
